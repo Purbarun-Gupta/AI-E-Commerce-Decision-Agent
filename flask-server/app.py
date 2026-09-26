@@ -3,8 +3,24 @@ from flask_cors import CORS
 
 from db.connection import engine
 
+from routes.products import product_bp
+from routes.customer import customer_bp
+from routes.orders import order_bp
+from routes.inventory import inventory_bp
+from routes.analytics import analytics_bp
 
 app = Flask(__name__)
+
+#products
+app.register_blueprint(product_bp)
+#customer
+app.register_blueprint(customer_bp)
+#orders
+app.register_blueprint(order_bp)
+#inventory
+app.register_blueprint(inventory_bp)
+#analysis
+app.register_blueprint(analytics_bp)
 
 #frontend -> flask
 CORS(app)

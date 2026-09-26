@@ -31,7 +31,6 @@ def get_db():
     """
     db = SessionLocal()
     try:
-        return db
+        yield db
     except Exception:
         db.close()
-        raise
