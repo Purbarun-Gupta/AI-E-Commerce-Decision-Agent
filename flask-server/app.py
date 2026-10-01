@@ -9,6 +9,8 @@ from routes.orders import order_bp
 from routes.inventory import inventory_bp
 from routes.analytics import analytics_bp
 
+from routes.agentr import agent_bp
+
 app = Flask(__name__)
 
 #products
@@ -21,6 +23,8 @@ app.register_blueprint(order_bp)
 app.register_blueprint(inventory_bp)
 #analysis
 app.register_blueprint(analytics_bp)
+#agent
+app.register_blueprint(agent_bp)
 
 #frontend -> flask
 CORS(app)
