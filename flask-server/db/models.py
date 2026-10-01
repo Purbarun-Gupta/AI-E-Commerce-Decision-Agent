@@ -85,6 +85,7 @@ class Inventory(Base):
         nullable=False,
         unique=True
     )
+    initial_stock = Column(Integer, nullable=False)
     current_stock = Column(Integer, nullable=False, default=0)
     reorder_level = Column(Integer, nullable=False, default=10)
     last_updated = Column(Date, nullable=False)
