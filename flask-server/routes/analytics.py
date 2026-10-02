@@ -7,10 +7,15 @@ from services.analytics_service import (
     get_top_products,
     get_low_stock_products,
     get_product_profit,
+    get_product_performance,
+    get_total_profit,
+    get_profit_margin,
     get_category_sales,
-    get_dashboard_summary
+    get_dashboard_summary,
+    get_inventory_risk,
+    get_sales_trends,
+    get_customer_metrics
 )
-
 
 analytics_bp = Blueprint(
     "analytics",
@@ -67,6 +72,48 @@ def product_profit():
     )
 
 
+@analytics_bp.route("/product-performance", methods=["GET"])
+def product_performance():
+
+    return jsonify(
+        get_product_performance()
+    )
+
+@analytics_bp.route("/total-profit", methods=["GET"])
+def total_profit():
+
+    return jsonify({
+        "total_profit": get_total_profit()
+    })
+
+
+@analytics_bp.route("/profit-margin", methods=["GET"])
+def profit_margin():
+
+    return jsonify({
+        "profit_margin": get_profit_margin()
+    })
+
+@analytics_bp.route("/inventory-risk", methods=["GET"])
+def inventory_risk():
+
+    return jsonify(
+        get_inventory_risk()
+    )
+
+@analytics_bp.route("/customer-metrics", methods=["GET"])
+def customer_metrics():
+    return jsonify(
+        get_customer_metrics()
+    )
+
+@analytics_bp.route("/sales-trends", methods=["GET"])
+def sales_trends():
+
+    return jsonify(
+        get_sales_trends()
+    )
+
 @analytics_bp.route("/category-sales", methods=["GET"])
 def category_sales():
 
@@ -81,3 +128,4 @@ def dashboard_summary():
     return jsonify(
         get_dashboard_summary()
     )
+
