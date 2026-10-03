@@ -66,13 +66,19 @@ def get_top_products(limit=5):
                     OrderItem.quantity
                 ).label("units_sold"),
                 func.sum(
-                    OrderItem.quantity *
-                    OrderItem.unit_price
+                    OrderItem.quantity * OrderItem.unit_price
                 ).label("revenue")
             )
             .join(
                 OrderItem,
                 Product.id == OrderItem.product_id
+            )
+            .join(
+                Order,
+                Order.id == OrderItem.order_id
+            )
+            .filter(
+                Order.status == "Completed"
             )
             .group_by(
                 Product.id,
@@ -99,7 +105,6 @@ def get_top_products(limit=5):
 
     finally:
         db.close()
-
 
 def get_low_stock_products():
     db = next(get_db())
@@ -513,21 +518,26 @@ def get_category_sales():
                     OrderItem.quantity
                 ).label("units_sold"),
                 func.sum(
-                    OrderItem.quantity *
-                    OrderItem.unit_price
+                    OrderItem.quantity * OrderItem.unit_price
                 ).label("revenue")
             )
             .join(
                 OrderItem,
                 Product.id == OrderItem.product_id
             )
+            .join(
+                Order,
+                Order.id == OrderItem.order_id
+            )
+            .filter(
+                Order.status == "Completed"
+            )
             .group_by(
                 Product.category
             )
             .order_by(
                 func.sum(
-                    OrderItem.quantity *
-                    OrderItem.unit_price
+                    OrderItem.quantity * OrderItem.unit_price
                 ).desc()
             )
             .all()

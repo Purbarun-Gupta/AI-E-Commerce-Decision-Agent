@@ -23,3 +23,5 @@ httpx
 pytest
 gunicorn
 dotenv
+sentence-transformers
+langchain-huggingface
