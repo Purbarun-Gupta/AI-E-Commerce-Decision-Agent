@@ -25,3 +25,5 @@ gunicorn
 dotenv
 sentence-transformers
 langchain-huggingface
+streamlit
+plotly
