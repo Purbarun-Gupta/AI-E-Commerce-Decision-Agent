@@ -1,42 +1,28 @@
 import streamlit as st
 from pathlib import Path
 
-
 # ============================================================
 # PAGE CONFIG
 # ============================================================
 
 st.set_page_config(
     page_title="CommerceAI",
-    page_icon="🤖",
+    page_icon="✦",
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
 
 # ============================================================
 # LOAD CSS
 # ============================================================
 
-def load_css():
-    css_path = Path(__file__).parent / "assets" / "style.css"
+css_path = Path(__file__).parent / "assets" / "style.css"
 
-    if css_path.exists():
-        with open(css_path, "r", encoding="utf-8") as file:
-            css = file.read()
-
-        st.markdown(
-            f"<style>{css}</style>",
-            unsafe_allow_html=True
-        )
-    else:
-        st.warning(
-            f"style.css was not found at: {css_path}"
-        )
-
-
-load_css()
-
+if css_path.exists():
+    css = css_path.read_text(encoding="utf-8")
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+else:
+    st.warning(f"CSS file not found: {css_path}")
 
 # ============================================================
 # SESSION STATE
@@ -48,332 +34,187 @@ if "messages" not in st.session_state:
 if "recent_questions" not in st.session_state:
     st.session_state.recent_questions = []
 
+if "pending_question" not in st.session_state:
+    st.session_state.pending_question = None
+
+
+def submit_question(question):
+    """Demo response handler. Connect the Flask agent here later."""
+    question = question.strip()
+
+    if not question:
+        return
+
+    st.session_state.messages.append({
+        "role": "user",
+        "content": question,
+    })
+
+    if question not in st.session_state.recent_questions:
+        st.session_state.recent_questions.append(question)
+
+    # Placeholder response until the Flask agent is connected.
+    response = (
+        "Your question has been received. The AI backend can be connected "
+        "here to provide answers from your business database and knowledge base."
+    )
+
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": response,
+    })
+
 
 # ============================================================
-# SIDEBAR
+# SIDEBAR — SIMPLE AND COMPACT
 # ============================================================
 
 with st.sidebar:
 
-    st.html(
-        """
-        <div class="sidebar-brand">
-
-            <div class="brand-icon">
-                ✦
-            </div>
-
-            <div>
-                <div class="brand-title">
-                    CommerceAI
-                </div>
-
-                <div class="brand-subtitle">
-                    Decision Intelligence
-                </div>
-            </div>
-
-        </div>
-        """
-    )
-
-    st.divider()
-
-    st.html(
-        """
-        <div class="sidebar-section-title">
-            WORKSPACE
-        </div>
-        """
-    )
-
-    st.html(
-        """
-        <div class="sidebar-info-card">
-
-            <div class="sidebar-info-icon">
-                ◈
-            </div>
-
-            <div>
-                <div class="sidebar-info-title">
-                    AI Decision Assistant
-                </div>
-
-                <div class="sidebar-info-text">
-                    Ask questions about sales,
-                    inventory, products and policies.
-                </div>
-            </div>
-
-        </div>
-        """
-    )
-
-    st.divider()
-
     if st.button(
-        "＋  New Conversation",
-        use_container_width=True
+        "＋  New conversation",
+        key="new_conversation",
+        use_container_width=True,
     ):
         st.session_state.messages = []
+        st.session_state.pending_question = None
         st.rerun()
 
-    st.html(
-        """
-        <div class="sidebar-section-title">
-            RECENT QUESTIONS
-        </div>
-        """
+    st.markdown(
+        '<div class="sidebar-section-title">RECENT QUESTIONS</div>',
+        unsafe_allow_html=True,
     )
 
-    if st.session_state.recent_questions:
+    recent_questions = list(
+        dict.fromkeys(reversed(st.session_state.recent_questions))
+    )[:6]
 
-        for question in st.session_state.recent_questions[-5:]:
-            st.caption(question)
+    if recent_questions:
+        for index, recent in enumerate(recent_questions):
+            label = recent if len(recent) <= 32 else recent[:29] + "..."
 
+            if st.button(
+                label,
+                key=f"recent_question_{index}",
+                use_container_width=True,
+                help=recent,
+            ):
+                st.session_state.pending_question = recent
+                st.rerun()
     else:
-
-        st.caption(
-            "Your recent questions will appear here."
+        st.markdown(
+            '<div class="sidebar-empty">'
+            'Your recent questions will appear here.'
+            '</div>',
+            unsafe_allow_html=True,
         )
 
-    st.divider()
-
-    st.html(
+    st.markdown(
         """
         <div class="sidebar-footer">
-
-            <div class="sidebar-footer-title">
-                CommerceAI
-            </div>
-
-            <div class="sidebar-footer-text">
-                AI-powered e-commerce decision intelligence
-            </div>
-
-            <div class="sidebar-version">
-                Version 1.0
-            </div>
-
+            <span class="sidebar-status-dot"></span>
+            <span>Decision assistant</span>
+            <span class="sidebar-version">v1.0</span>
         </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown("""
+        <div class="sidebar-logo">
+            <div class="logo-icon">✦</div>
+            <div>
+                <div class="logo-title">Commerce_Ai</div>
+                <div class="logo-subtitle">INTELLIGENT COMMERCE</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    
+
+
+# ============================================================
+# HANDLE SELECTED RECENT QUESTION
+# ============================================================
+
+if st.session_state.pending_question:
+    selected_question = st.session_state.pending_question
+    st.session_state.pending_question = None
+    submit_question(selected_question)
+    st.rerun()
+
+
+# ============================================================
+# WELCOME SCREEN OR CONVERSATION
+# ============================================================
+
+if not st.session_state.messages:
+
+    st.markdown(
         """
+        <div class="welcome-container">
+            <div class="welcome-icon">✦</div>
+            <h1>How can I help you today?</h1>
+            <p>
+                Ask about sales, inventory, product performance or company policies.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-
-# ============================================================
-# MAIN HERO
-# ============================================================
-
-st.html(
-    """
-    <div class="hero-container">
-
-        <div class="hero-eyebrow">
-            AI DECISION ASSISTANT
-        </div>
-
-        <h1 class="hero-title">
-            Ask your business anything.
-        </h1>
-
-        <p class="hero-description">
-            Get intelligent answers about sales, inventory,
-            products, profitability and company policies.
-        </p>
-
-        <div class="ai-status">
-            <span class="status-dot"></span>
-            AI Assistant Ready
-        </div>
-
-    </div>
-    """
-)
-
-
-# ============================================================
-# HERO BADGE
-# ============================================================
-
-st.html(
-    """
-    <div class="hero-badge">
-        ✦ Intelligent Business Analysis
-    </div>
-    """
-)
-
-
-# ============================================================
-# FEATURE CARDS
-# ============================================================
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-
-    st.html(
-        """
-        <div class="feature-card">
-
-            <div class="feature-icon">
-                ◈
-            </div>
-
-            <div class="feature-title">
-                Business Analytics
-            </div>
-
-            <div class="feature-description">
-                Understand revenue, orders,
-                profitability and sales trends.
-            </div>
-
-        </div>
-        """
+    st.markdown(
+        '<div class="suggestions-title">SUGGESTED QUESTIONS</div>',
+        unsafe_allow_html=True,
     )
 
+    left_col, right_col = st.columns(2, gap="small")
 
-with col2:
-
-    st.html(
-        """
-        <div class="feature-card">
-
-            <div class="feature-icon">
-                ◇
-            </div>
-
-            <div class="feature-title">
-                Inventory Intelligence
-            </div>
-
-            <div class="feature-description">
-                Identify low-stock products,
-                inventory risks and reorder opportunities.
-            </div>
-
-        </div>
-        """
-    )
-
-
-with col3:
-
-    st.html(
-        """
-        <div class="feature-card">
-
-            <div class="feature-icon">
-                ✦
-            </div>
-
-            <div class="feature-title">
-                Company Knowledge
-            </div>
-
-            <div class="feature-description">
-                Search policies, shipping,
-                returns, warranty and operational documents.
-            </div>
-
-        </div>
-        """
-    )
-
-
-# ============================================================
-# SUGGESTED QUESTIONS
-# ============================================================
-
-st.html(
-    """
-    <div class="suggestions-header">
-        <div class="suggestions-title">
-            Try asking
-        </div>
-
-        <div class="suggestions-subtitle">
-            Explore your business with natural language
-        </div>
-    </div>
-    """
-)
-
-
-suggestions = [
-    "What is our total revenue?",
-    "Which products are performing best?",
-    "Which products have inventory risk?",
-    "Can I cancel an order after it has been dispatched?",
-]
-
-
-suggestion_cols = st.columns(2)
-
-for index, question in enumerate(suggestions):
-
-    with suggestion_cols[index % 2]:
-
+    with left_col:
         if st.button(
-            question,
-            key=f"suggestion_{index}",
+            "↗  What is our total revenue?",
+            key="suggestion_revenue",
             use_container_width=True,
         ):
-
-            st.session_state.messages.append(
-                {
-                    "role": "user",
-                    "content": question,
-                }
-            )
-
-            st.session_state.recent_questions.append(
-                question
-            )
-
-            st.session_state.messages.append(
-                {
-                    "role": "assistant",
-                    "content": (
-                        "Your AI assistant is ready. "
-                        "The backend agent can be connected "
-                        "to this interface next."
-                    ),
-                }
-            )
-
+            submit_question("What is our total revenue?")
             st.rerun()
 
+        if st.button(
+            "↗  Which products have inventory risk?",
+            key="suggestion_inventory",
+            use_container_width=True,
+        ):
+            submit_question("Which products have inventory risk?")
+            st.rerun()
 
-# ============================================================
-# CHAT HISTORY
-# ============================================================
+    with right_col:
+        if st.button(
+            "↗  Which products are performing best?",
+            key="suggestion_products",
+            use_container_width=True,
+        ):
+            submit_question("Which products are performing best?")
+            st.rerun()
 
-if st.session_state.messages:
+        if st.button(
+            "↗  Can I cancel a dispatched order?",
+            key="suggestion_policy",
+            use_container_width=True,
+        ):
+            submit_question(
+                "Can I cancel an order after it has been dispatched?"
+            )
+            st.rerun()
 
-    st.html(
-        """
-        <div class="chat-section-title">
-            Conversation
-        </div>
-        """
+else:
+
+    st.markdown(
+        '<div class="conversation-label">Conversation</div>',
+        unsafe_allow_html=True,
     )
 
     for message in st.session_state.messages:
-
-        if message["role"] == "user":
-
-            st.chat_message("user").write(
-                message["content"]
-            )
-
-        else:
-
-            st.chat_message("assistant").write(
-                message["content"]
-            )
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
 
 # ============================================================
@@ -381,55 +222,10 @@ if st.session_state.messages:
 # ============================================================
 
 question = st.chat_input(
-    "Ask anything about your e-commerce business..."
+    "Message your business assistant...",
+    key="main_chat_input",
 )
-
 
 if question:
-
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": question,
-        }
-    )
-
-    st.session_state.recent_questions.append(
-        question
-    )
-
-    response = (
-        "Your question has been received. "
-        "The Flask AI agent can be connected here "
-        "to provide database and RAG-powered answers."
-    )
-
-    st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": response,
-        }
-    )
-
+    submit_question(question)
     st.rerun()
-
-
-# ============================================================
-# FOOTER
-# ============================================================
-
-st.html(
-    """
-    <div class="main-footer">
-
-        <div>
-            CommerceAI
-        </div>
-
-        <div>
-            AI-powered e-commerce decision intelligence
-        </div>
-
-    </div>
-    """
-)
