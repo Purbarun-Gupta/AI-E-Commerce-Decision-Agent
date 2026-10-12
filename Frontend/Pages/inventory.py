@@ -1,12 +1,7 @@
 
-import streamlit as st
 from pathlib import Path
 import pandas as pd
-
-
-# ============================================================
-# PAGE CONFIG
-# ============================================================
+import streamlit as st
 
 st.set_page_config(
     page_title="Inventory | CommerceAI",
@@ -14,47 +9,25 @@ st.set_page_config(
     layout="wide",
 )
 
-
-# ============================================================
-# LOAD CSS
-# ============================================================
-
-def load_css():
-    css_path = (
-        Path(__file__).parent.parent
-        / "assets"
-        / "style.css"
+BASE_DIR = Path(__file__).resolve().parent.parent
+CSS_PATH = BASE_DIR / "assets" / "style.css"
+if CSS_PATH.exists():
+    st.markdown(
+        f"<style>{CSS_PATH.read_text(encoding='utf-8')}</style>",
+        unsafe_allow_html=True,
     )
 
-    if css_path.exists():
-        css = css_path.read_text(encoding="utf-8")
-        st.markdown(
-            f"<style>{css}</style>",
-            unsafe_allow_html=True,
-        )
+df = pd.DataFrame([
+    {"Product": "Smart Watch", "SKU": "ELEC-001", "Category": "Wearables", "Stock": 42, "Reorder Level": 20, "Unit Price": 4500},
+    {"Product": "USB-C Cable", "SKU": "ACC-002", "Category": "Accessories", "Stock": 68, "Reorder Level": 25, "Unit Price": 350},
+    {"Product": "Smartphone", "SKU": "ELEC-003", "Category": "Mobiles", "Stock": 31, "Reorder Level": 15, "Unit Price": 24999},
+    {"Product": "Laptop Stand", "SKU": "ACC-004", "Category": "Accessories", "Stock": 55, "Reorder Level": 20, "Unit Price": 1200},
+    {"Product": "HDMI Cable", "SKU": "ACC-005", "Category": "Accessories", "Stock": 19, "Reorder Level": 20, "Unit Price": 500},
+    {"Product": "Webcam", "SKU": "ELEC-006", "Category": "Electronics", "Stock": 14, "Reorder Level": 18, "Unit Price": 2200},
+])
 
 
-load_css()
-
-
-# ============================================================
-# SAMPLE INVENTORY DATA
-# Replace with database/API data when connected.
-# ============================================================
-
-inventory_df = pd.DataFrame(
-    [
-        {"Product": "Smart Watch", "SKU": "ELEC-001", "Category": "Wearables", "Stock": 42, "Reorder Level": 20, "Unit Price": 4500},
-        {"Product": "USB-C Cable", "SKU": "ACC-002", "Category": "Accessories", "Stock": 68, "Reorder Level": 25, "Unit Price": 350},
-        {"Product": "Smartphone", "SKU": "ELEC-003", "Category": "Mobiles", "Stock": 31, "Reorder Level": 15, "Unit Price": 24999},
-        {"Product": "Laptop Stand", "SKU": "ACC-004", "Category": "Accessories", "Stock": 55, "Reorder Level": 20, "Unit Price": 1200},
-        {"Product": "HDMI Cable", "SKU": "ACC-005", "Category": "Accessories", "Stock": 19, "Reorder Level": 20, "Unit Price": 500},
-        {"Product": "Webcam", "SKU": "ELEC-006", "Category": "Electronics", "Stock": 14, "Reorder Level": 18, "Unit Price": 2200},
-    ]
-)
-
-
-def get_stock_status(row):
+def stock_status(row):
     if row["Stock"] <= 0:
         return "Out of stock"
     if row["Stock"] <= row["Reorder Level"]:
@@ -64,420 +37,118 @@ def get_stock_status(row):
     return "Healthy"
 
 
-inventory_df["Status"] = inventory_df.apply(
-    get_stock_status,
-    axis=1,
-)
-
-inventory_df["Stock Value"] = (
-    inventory_df["Stock"] * inventory_df["Unit Price"]
-)
-
-
-# ============================================================
-# HEADER
-# ============================================================
+df["Status"] = df.apply(stock_status, axis=1)
+df["Stock Value"] = df["Stock"] * df["Unit Price"]
 
 st.markdown(
     """
-    <div class="inventory-page-header">
+    <div class="page-header">
         <div>
-            <div class="inventory-eyebrow">
-                INVENTORY INTELLIGENCE
-            </div>
-            <h1>Inventory Overview</h1>
-            <p>
-                Monitor stock levels, identify supply risks,
-                and make smarter replenishment decisions.
+            <div class="page-kicker">INVENTORY INTELLIGENCE</div>
+            <h1 class="page-title">Inventory Overview</h1>
+            <p class="page-description">
+                Monitor stock levels and identify replenishment risks.
             </p>
         </div>
-        <div class="inventory-header-icon">📦</div>
+        <div class="page-header-icon">📦</div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
+total_value = df["Stock Value"].sum()
+reorder_count = int(df["Status"].isin(["Reorder", "Out of stock"]).sum())
+monitor_count = int((df["Status"] == "Monitor").sum())
 
-# ============================================================
-# KPI METRICS
-# ============================================================
-
-total_products = len(inventory_df)
-low_stock = int(
-    inventory_df["Status"].isin(["Reorder", "Out of stock"]).sum()
-)
-monitor_stock = int(
-    (inventory_df["Status"] == "Monitor").sum()
-)
-inventory_value = inventory_df["Stock Value"].sum()
-
-
-def format_inr(value):
-    if value >= 1_000_000:
-        return f"₹{value / 1_000_000:.2f}M"
-    if value >= 1000:
-        return f"₹{value / 1000:.1f}K"
-    return f"₹{value:,.0f}"
-
-
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-
+k1, k2, k3, k4 = st.columns(4)
 kpis = [
-    (
-        kpi1,
-        "TOTAL PRODUCTS",
-        f"{total_products}",
-        "Products in this sample",
-        "neutral",
-        "▦",
-    ),
-    (
-        kpi2,
-        "REORDER REQUIRED",
-        f"{low_stock}",
-        "At or below reorder level",
-        "danger" if low_stock else "good",
-        "!",
-    ),
-    (
-        kpi3,
-        "STOCK TO MONITOR",
-        f"{monitor_stock}",
-        "Approaching reorder level",
-        "warning" if monitor_stock else "good",
-        "◷",
-    ),
-    (
-        kpi4,
-        "INVENTORY VALUE",
-        format_inr(inventory_value),
-        "Value of listed stock",
-        "neutral",
-        "₹",
-    ),
+    (k1, "TOTAL PRODUCTS", f"{len(df)}", "Products listed"),
+    (k2, "REORDER REQUIRED", str(reorder_count), "At/below reorder level"),
+    (k3, "STOCK TO MONITOR", str(monitor_count), "Approaching threshold"),
+    (k4, "INVENTORY VALUE", f"₹{total_value:,.0f}", "Listed stock value"),
 ]
 
-for col, label, value, note, tone, icon in kpis:
+for col, label, value, note in kpis:
     with col:
         st.markdown(
             f"""
-            <div class="inventory-kpi-card">
-                <div class="inventory-kpi-top">
-                    <span class="inventory-kpi-label">{label}</span>
-                    <span class="inventory-kpi-icon {tone}">{icon}</span>
-                </div>
-                <div class="inventory-kpi-value">{value}</div>
-                <div class="inventory-kpi-note">
-                    <span class="kpi-status-dot {tone}"></span>
-                    {note}
-                </div>
+            <div class="metric-card">
+                <div class="metric-label">{label}</div>
+                <div class="metric-value">{value}</div>
+                <div class="metric-note">{note}</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
+st.markdown("## Product inventory")
 
-# ============================================================
-# INVENTORY TABLE
-# ============================================================
-
-st.markdown(
-    """
-    <div class="inventory-section-heading">
-        <div>
-            <div class="inventory-eyebrow">STOCK MONITORING</div>
-            <h2>Product inventory</h2>
-            <p>
-                Search products and inspect current stock,
-                reorder thresholds, and stock value.
-            </p>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-filter1, filter2, filter3 = st.columns([2, 1.2, 1.2])
-
-with filter1:
-    search_term = st.text_input(
-        "Search inventory",
-        placeholder="Search product name or SKU...",
-        key="inventory_search",
-    )
-
-with filter2:
-    categories = ["All categories"] + sorted(
-        inventory_df["Category"].unique().tolist()
-    )
-    selected_category = st.selectbox(
+f1, f2, f3 = st.columns([2, 1, 1])
+with f1:
+    search = st.text_input("Search product or SKU", key="inv_search")
+with f2:
+    category = st.selectbox(
         "Category",
-        categories,
-        key="inventory_category",
+        ["All categories"] + sorted(df["Category"].unique().tolist()),
     )
-
-with filter3:
-    statuses = ["All statuses"] + [
-        "Healthy",
-        "Monitor",
-        "Reorder",
-        "Out of stock",
-    ]
-    selected_status = st.selectbox(
-        "Stock status",
-        statuses,
-        key="inventory_status",
-    )
-
-
-filtered_df = inventory_df.copy()
-
-if search_term.strip():
-    term = search_term.strip()
-    mask = (
-        filtered_df["Product"].str.contains(
-            term, case=False, na=False
-        )
-        | filtered_df["SKU"].str.contains(
-            term, case=False, na=False
-        )
-    )
-    filtered_df = filtered_df[mask]
-
-if selected_category != "All categories":
-    filtered_df = filtered_df[
-        filtered_df["Category"] == selected_category
-    ]
-
-if selected_status != "All statuses":
-    filtered_df = filtered_df[
-        filtered_df["Status"] == selected_status
-    ]
-
-
-st.markdown(
-    f"""
-    <div class="inventory-table-summary">
-        <span>Showing <strong>{len(filtered_df)}</strong>
-        of <strong>{len(inventory_df)}</strong> listed products</span>
-        <span class="inventory-table-legend">
-            <span class="legend-dot healthy-dot"></span> Healthy
-            <span class="legend-dot monitor-dot"></span> Monitor
-            <span class="legend-dot risk-dot"></span> Reorder
-        </span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-display_df = filtered_df[
-    [
-        "Product",
-        "SKU",
-        "Category",
-        "Stock",
-        "Reorder Level",
+with f3:
+    status = st.selectbox(
         "Status",
-        "Stock Value",
-    ]
-].copy()
+        ["All statuses", "Healthy", "Monitor", "Reorder", "Out of stock"],
+    )
 
-display_df["Stock Value"] = display_df["Stock Value"].map(
-    lambda value: f"₹{value:,.0f}"
-)
+filtered = df.copy()
+
+if search.strip():
+    term = search.strip()
+    filtered = filtered[
+        filtered["Product"].str.contains(term, case=False, na=False)
+        | filtered["SKU"].str.contains(term, case=False, na=False)
+    ]
+
+if category != "All categories":
+    filtered = filtered[filtered["Category"] == category]
+
+if status != "All statuses":
+    filtered = filtered[filtered["Status"] == status]
+
+st.caption(f"Showing {len(filtered)} of {len(df)} products")
+
+display = filtered.copy()
+display["Unit Price"] = display["Unit Price"].map(lambda x: f"₹{x:,.0f}")
+display["Stock Value"] = display["Stock Value"].map(lambda x: f"₹{x:,.0f}")
 
 st.dataframe(
-    display_df,
+    display,
     use_container_width=True,
     hide_index=True,
-    height=300,
     column_config={
-        "Product": st.column_config.TextColumn(
-            "Product name",
-            width="medium",
-        ),
-        "SKU": st.column_config.TextColumn(
-            "SKU",
-            width="small",
-        ),
-        "Category": st.column_config.TextColumn(
-            "Category",
-            width="medium",
-        ),
-        "Stock": st.column_config.NumberColumn(
-            "Available stock",
-            format="%d units",
-        ),
+        "Stock": st.column_config.NumberColumn("Stock", format="%d units"),
         "Reorder Level": st.column_config.NumberColumn(
-            "Reorder threshold",
-            format="%d units",
-        ),
-        "Status": st.column_config.TextColumn(
-            "Stock status",
-            width="small",
-        ),
-        "Stock Value": st.column_config.TextColumn(
-            "Stock value",
-            width="small",
+            "Reorder level", format="%d units"
         ),
     },
 )
 
+st.markdown("## Reorder recommendations")
+reorder = df[df["Status"].isin(["Reorder", "Out of stock"])]
 
-# ============================================================
-# STOCK HEALTH AND RISK
-# ============================================================
-
-st.markdown(
-    """
-    <div class="inventory-section-heading">
-        <div>
-            <div class="inventory-eyebrow">INVENTORY HEALTH</div>
-            <h2>Stock health summary</h2>
-            <p>A quick view of stock conditions in the listed products.</p>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-healthy_count = int(
-    (inventory_df["Status"] == "Healthy").sum()
-)
-monitor_count = int(
-    (inventory_df["Status"] == "Monitor").sum()
-)
-risk_count = int(
-    inventory_df["Status"].isin(["Reorder", "Out of stock"]).sum()
-)
-
-health_col, risk_col = st.columns(2)
-
-with health_col:
-    st.markdown(
-        f"""
-        <div class="inventory-insight-card health-insight">
-            <div class="insight-icon">✓</div>
-            <div class="insight-content">
-                <div class="insight-kicker">STOCK HEALTH</div>
-                <div class="insight-title">Inventory position</div>
-                <div class="insight-description">
-                    {healthy_count} products have stock comfortably
-                    above their reorder threshold.
-                </div>
-                <div class="insight-bottom">
-                    <span class="insight-number">{healthy_count}</span>
-                    <span>healthy products</span>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with risk_col:
-    st.markdown(
-        f"""
-        <div class="inventory-insight-card risk-insight">
-            <div class="insight-icon">!</div>
-            <div class="insight-content">
-                <div class="insight-kicker">REPLENISHMENT RISK</div>
-                <div class="insight-title">Products needing attention</div>
-                <div class="insight-description">
-                    {risk_count} products are at or below their
-                    configured reorder threshold.
-                </div>
-                <div class="insight-bottom">
-                    <span class="insight-number">{risk_count}</span>
-                    <span>products to review</span>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-# ============================================================
-# REORDER RECOMMENDATIONS
-# ============================================================
-
-st.markdown(
-    """
-    <div class="inventory-section-heading">
-        <div>
-            <div class="inventory-eyebrow">REPLENISHMENT PLANNING</div>
-            <h2>Reorder recommendations</h2>
-            <p>
-                Products at or below their configured reorder threshold.
-            </p>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-reorder_df = inventory_df[
-    inventory_df["Status"].isin(["Reorder", "Out of stock"])
-].copy()
-
-if reorder_df.empty:
-    st.success(
-        "No listed products currently require replenishment."
-    )
+if reorder.empty:
+    st.success("No products currently require replenishment.")
 else:
-    for _, item in reorder_df.iterrows():
-        stock = int(item["Stock"])
-        reorder_level = int(item["Reorder Level"])
-        suggested_qty = max(reorder_level * 2 - stock, reorder_level)
-
-        st.markdown(
-            f"""
-            <div class="inventory-recommendation-card">
-                <div class="recommendation-symbol">↻</div>
-                <div class="recommendation-main">
-                    <div class="recommendation-product">
-                        {item["Product"]}
-                    </div>
-                    <div class="recommendation-meta">
-                        SKU {item["SKU"]} · {item["Category"]}
-                    </div>
-                    <div class="recommendation-reason">
-                        Current stock is {stock} units, at or below
-                        the reorder threshold of {reorder_level} units.
-                    </div>
-                </div>
-                <div class="recommendation-stock">
-                    <span>STOCK</span>
-                    <strong>{stock}</strong>
-                    <small>units</small>
-                </div>
-                <div class="recommendation-quantity">
-                    <span>SUGGESTED TOP-UP</span>
-                    <strong>{suggested_qty}</strong>
-                    <small>units · indicative</small>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+    for _, row in reorder.iterrows():
+        suggested = max(
+            int(row["Reorder Level"]) * 2 - int(row["Stock"]),
+            int(row["Reorder Level"]),
         )
-
-
-# ============================================================
-# FOOTER
-# ============================================================
-
-st.markdown(
-    """
-    <div class="inventory-footer">
-        <span class="inventory-footer-brand">CommerceAI</span>
-        <span class="inventory-footer-dot">•</span>
-        <span>Inventory Intelligence</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+        with st.container(border=True):
+            col1, col2, col3 = st.columns([3, 1, 1])
+            with col1:
+                st.markdown(f"**{row['Product']}**")
+                st.caption(
+                    f"{row['SKU']} · {row['Category']} · {row['Status']}"
+                )
+            with col2:
+                st.metric("Current stock", f"{int(row['Stock'])} units")
+            with col3:
+                st.metric("Suggested top-up", f"{suggested} units")
