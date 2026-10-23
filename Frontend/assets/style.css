@@ -713,3 +713,117 @@ hr {
         text-align: left;
     }
 }
+
+
+/* =========================================================
+   COMMERCEAI — SIDEBAR NAVIGATION FONT SIZE UPDATE
+   Append at the END of style.css
+   ========================================================= */
+
+/* Navigation links */
+[data-testid="stSidebar"] [data-testid="stPageLink"] a,
+[data-testid="stSidebar"] [data-testid="stPageLink"] p {
+    color: #c2cede !important;
+    font-size: 19px !important;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+/* Custom sidebar navigation buttons */
+[data-testid="stSidebar"] .stButton > button {
+    width: 100%;
+    min-height: 46px;
+    text-align: left;
+    font-size: 18px !important;
+    font-weight: 500;
+    line-height: 1.5;
+    padding: 10px 14px;
+    background: transparent;
+    color: #b9c7d9;
+    border: 1px solid transparent;
+    box-shadow: none;
+}
+
+/* Hover state */
+[data-testid="stSidebar"] .stButton > button:hover {
+    background: #19283d;
+    border-color: #344963;
+    color: #ffffff;
+}
+
+/* CommerceAI brand name */
+.sidebar-brand,
+.sidebar-brand .logo-title,
+.sidebar-logo .logo-title {
+    font-size: 25px !important;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+/* Brand subtitle */
+.sidebar-brand .logo-subtitle,
+.sidebar-logo .logo-subtitle {
+    font-size: 12px !important;
+    letter-spacing: 2px;
+    line-height: 1.6;
+}
+
+/* Sidebar section labels, e.g. WORKSPACE and RECENT CHATS */
+[data-testid="stSidebar"] .sidebar-section-label {
+    font-size: 13px !important;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+/* Sidebar informational text */
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+/* Workspace status */
+[data-testid="stSidebar"] .sidebar-bottom {
+    font-size: 16px !important;
+    font-weight: 600;
+}
+
+/* Sidebar expand/collapse controls */
+[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapsedControl"] {
+    color: #d2dceb !important;
+}
+
+/* Main content uses available width */
+[data-testid="stAppViewContainer"] [data-testid="stMain"] {
+    min-width: 0;
+    width: 100%;
+}
+
+[data-testid="stMainBlockContainer"] {
+    max-width: 1480px;
+    width: 100%;
+}
+
+/* Responsive sizing */
+@media (max-width: 700px) {
+    [data-testid="stSidebar"] [data-testid="stPageLink"] a,
+    [data-testid="stSidebar"] [data-testid="stPageLink"] p {
+        font-size: 17px !important;
+    }
+
+    [data-testid="stSidebar"] .stButton > button {
+        font-size: 16px !important;
+        min-height: 42px;
+    }
+
+    .sidebar-brand .logo-title,
+    .sidebar-logo .logo-title {
+        font-size: 22px !important;
+    }
+
+    [data-testid="stMainBlockContainer"] {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}
