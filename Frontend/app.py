@@ -28,6 +28,19 @@ else:
         "using the CSS provided below."
     )
 
+# Hide Streamlit's default multipage navigation.
+# Keep the custom CommerceAI navigation below.
+st.markdown(
+    """
+    <style>
+        [data-testid="stSidebarNav"] {
+            display: none !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # =========================================================
 # SESSION STATE
 # =========================================================

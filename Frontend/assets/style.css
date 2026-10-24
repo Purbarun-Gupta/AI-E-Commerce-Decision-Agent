@@ -827,3 +827,131 @@ hr {
         padding-right: 1rem;
     }
 }
+
+
+/* Make the CommerceAI sidebar fill more of the screen */
+[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+    padding: 2rem 1rem 1.5rem 1rem;
+}
+
+/* Enlarge the brand area */
+.sidebar-brand {
+    gap: 0.9rem;
+    padding: 1.5rem 0 1.8rem 0;
+}
+
+.brand-symbol {
+    width: 52px;
+    height: 52px;
+    font-size: 1.8rem;
+}
+
+.brand-name {
+    font-size: 1.25rem;
+}
+
+.brand-caption {
+    font-size: 0.65rem;
+    letter-spacing: 0.16em;
+}
+
+/* Make the workspace label more readable */
+.sidebar-label {
+    font-size: 0.72rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    letter-spacing: 0.18em;
+}
+
+/* Enlarge navigation labels */
+[data-testid="stSidebar"] [data-testid="stRadio"] label {
+    font-size: 1rem !important;
+}
+
+/* Increase space between navigation options */
+[data-testid="stSidebar"] [data-testid="stRadio"] > div {
+    gap: 0.9rem;
+}
+
+/* Give each navigation option more breathing room */
+[data-testid="stSidebar"] [data-testid="stRadio"] label > div {
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+}
+
+/* Keep the workspace status near the bottom */
+.sidebar-spacer {
+    min-height: 1rem;
+    flex-grow: 1;
+}
+
+.sidebar-status {
+    font-size: 0.8rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+
+/* ===== COMPACT TOP SPACING ===== */
+[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+    padding-top: 0.5rem !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+}
+
+/* Remove excess space above the CommerceAI brand */
+.sidebar-brand {
+    margin-top: 0 !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 1.5rem !important;
+    gap: 0.85rem;
+}
+
+/* Larger brand icon */
+.brand-symbol {
+    width: 58px;
+    height: 58px;
+    font-size: 2rem;
+}
+
+/* Larger CommerceAI title */
+.brand-name {
+    font-size: 2rem !important;
+    font-weight: 700;
+}
+
+/* Larger subtitle */
+.brand-caption {
+    font-size: 0.7rem !important;
+    letter-spacing: 0.15em;
+}
+
+/* Workspace heading */
+.sidebar-label {
+    font-size: 0.78rem !important;
+    margin-top: 1.2rem;
+    margin-bottom: 1.2rem;
+    letter-spacing: 0.18em;
+}
+
+/* Navigation label */
+[data-testid="stSidebar"] [data-testid="stRadio"] > label {
+    font-size: 1rem !important;
+    margin-bottom: 0.6rem;
+}
+
+/* Larger navigation text */
+[data-testid="stSidebar"] [data-testid="stRadio"] label p {
+    font-size: 1.1rem !important;
+}
+
+/* More space between navigation items */
+[data-testid="stSidebar"] [data-testid="stRadio"] > div {
+    gap: 1rem !important;
+}
+
+/* More comfortable clickable navigation options */
+[data-testid="stSidebar"] [data-testid="stRadio"] label {
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+}
