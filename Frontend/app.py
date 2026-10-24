@@ -4,6 +4,8 @@ import html
 import pandas as pd
 import streamlit as st
 
+from api import api_post, api_get
+
 # =========================================================
 # CONFIGURATION
 # =========================================================
@@ -153,6 +155,14 @@ monitor_count = int((inventory_df["Status"] == "Monitor").sum())
 def money_inr(value):
     return f"₹{value:,.0f}"
 
+def fetch_data(endpoint):
+    data = api_get(endpoint)
+
+    if isinstance(data, dict) and "error" in data:
+        return None
+
+    return data
+
 def section_header(eyebrow, title, description):
     st.markdown(
         f"""
@@ -226,8 +236,10 @@ def answer_question(question):
         "pipeline to answer from your actual business data."
     )
 
+
 def send_question(question):
     question = question.strip()
+
     if not question:
         return
 
@@ -237,16 +249,49 @@ def send_question(question):
     })
 
     recent = st.session_state.recent_questions
+
     if question not in recent:
         recent.append(question)
 
     st.session_state.recent_questions = recent[-20:]
 
-    response = answer_question(question)
+    with st.spinner("Analyzing your business data..."):
+        result = api_post(
+            "/api/agent/ask",
+            {"question": question}
+        )
+
+    if not isinstance(result, dict) or "error" in result:
+        st.error("AI backend request failed")
+        st.json(result if isinstance(result, dict) else {"result": str(result)})
+
+        answer = "The AI request failed. See the error details above."
+    else:
+        answer = result.get(
+            "answer",
+            "The backend returned no answer."
+        )
+
+        route = result.get("route")
+
+        if route:
+            answer = f"**Route: {route}**\n\n{answer}"
+
+        knowledge = result.get("knowledge")
+
+        if knowledge and knowledge.get("sources"):
+            answer += "\n\n**Sources:**\n"
+
+            for source in knowledge["sources"]:
+                name = source.get("source", "Unknown document")
+                page = source.get("page", "Unknown")
+                answer += f"\n- {name} — page {page}"
+
     st.session_state.messages.append({
         "role": "assistant",
-        "content": response,
+        "content": answer,
     })
+
 
 # =========================================================
 # PERMANENT LEFT SIDEBAR
@@ -368,21 +413,66 @@ if selected_section == "Home":
         unsafe_allow_html=True,
     )
 
+    
+    business_summary = fetch_data("/api/analytics/summary")
+    inventory_data = fetch_data("/api/analytics/inventory-risk")
+    low_stock_data = fetch_data("/api/analytics/low-stock")
+
     section_header(
         "BUSINESS SNAPSHOT",
         "Your business at a glance",
-        "Illustrative figures from the current sample data.",
+        "Live metrics retrieved from your business database.",
     )
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        metric_card("TOTAL REVENUE", "₹12.35M", "Sample analytics figure", "01")
-    with c2:
-        metric_card("TOTAL ORDERS", "50", "Sample order volume", "02")
-    with c3:
-        metric_card("INVENTORY PRODUCTS", total_products, "Listed sample products", "03")
-    with c4:
-        metric_card("REORDER ALERTS", reorder_count, "Items to review", "04")
+    if business_summary is None:
+        st.error("Unable to load business analytics. Check that Flask is running.")
+    else:
+        total_revenue = business_summary.get("total_revenue")
+        total_orders = business_summary.get("total_orders")
+
+        c1, c2, c3, c4 = st.columns(4)
+
+        with c1:
+            value = money_inr(total_revenue) if total_revenue is not None else "N/A"
+            metric_card("TOTAL REVENUE", value, "From completed business analytics", "01")
+
+        with c2:
+            value = f"{total_orders:,}" if total_orders is not None else "N/A"
+            metric_card("TOTAL ORDERS", value, "Recorded orders", "02")
+
+        with c3:
+            if isinstance(inventory_data, list):
+                product_count = len(inventory_data)
+                metric_card(
+                    "INVENTORY PRODUCTS",
+                    product_count,
+                    "Products returned by inventory-risk analytics",
+                    "03",
+                )
+            else:
+                metric_card(
+                    "INVENTORY PRODUCTS",
+                    "N/A",
+                    "Inventory data unavailable",
+                    "03",
+                )
+
+        with c4:
+            if isinstance(low_stock_data, list):
+                metric_card(
+                    "LOW-STOCK PRODUCTS",
+                    len(low_stock_data),
+                    "Products returned by low-stock analytics",
+                    "04",
+                )
+            else:
+                metric_card(
+                    "LOW-STOCK PRODUCTS",
+                    "N/A",
+                    "Low-stock data unavailable",
+                    "04",
+                )
+
 
     st.markdown(
         """
@@ -454,7 +544,7 @@ elif selected_section == "AI Agent":
     for message_index, message in enumerate(st.session_state.messages):
         with st.chat_message(
             message["role"],
-            avatar="✦" if message["role"] == "assistant" else "●",
+            avatar="✨" if message["role"] == "assistant" else "👤",
         ):
             st.markdown(message["content"])
 

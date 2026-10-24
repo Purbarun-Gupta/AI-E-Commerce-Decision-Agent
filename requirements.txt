@@ -27,3 +27,4 @@ sentence-transformers
 langchain-huggingface
 streamlit
 plotly
+requests
