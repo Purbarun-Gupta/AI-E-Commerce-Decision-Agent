@@ -51,29 +51,16 @@ def chart_layout(title="", height=350):
 # REVENUE CHART
 # ============================================================
 
+
 def revenue_chart(data=None):
+    if data is None or data.empty:
+        st.info("No revenue data is available from the backend.")
+        return
 
-    if data is None:
-
-        data = pd.DataFrame({
-            "Month": [
-                "Jan",
-                "Feb",
-                "Mar",
-                "Apr",
-                "May",
-                "Jun"
-            ],
-
-            "Revenue": [
-                1.42,
-                1.65,
-                1.82,
-                1.94,
-                2.31,
-                2.68
-            ]
-        })
+    required_columns = {"Month", "Revenue"}
+    if not required_columns.issubset(data.columns):
+        st.error("Revenue data is missing required columns.")
+        return
 
     fig = go.Figure()
 
@@ -81,40 +68,22 @@ def revenue_chart(data=None):
         go.Scatter(
             x=data["Month"],
             y=data["Revenue"],
-
             mode="lines+markers",
-
             name="Revenue",
-
-            line=dict(
-                width=3
-            ),
-
-            marker=dict(
-                size=7
-            ),
-
+            line=dict(width=3),
+            marker=dict(size=7),
             fill="tozeroy",
-
             hovertemplate=(
                 "<b>%{x}</b><br>"
-                "Revenue: ₹%{y:.2f}M"
+                "Revenue: ₹%{y:,.2f}"
                 "<extra></extra>"
             )
         )
     )
 
-    # Base layout
-    fig.update_layout(
-        **chart_layout(
-            "Revenue performance",
-            350
-        )
-    )
-
-    # Y-axis defined ONLY here
+    fig.update_layout(**chart_layout("Revenue performance", 350))
     fig.update_yaxes(
-        title_text="Revenue (₹M)",
+        title_text="Revenue (₹)",
         showgrid=True,
         gridcolor="rgba(128,128,128,0.18)",
         zeroline=False
@@ -123,9 +92,7 @@ def revenue_chart(data=None):
     st.plotly_chart(
         fig,
         use_container_width=True,
-        config={
-            "displayModeBar": False
-        }
+        config={"displayModeBar": False}
     )
 
 

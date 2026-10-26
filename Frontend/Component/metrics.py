@@ -57,96 +57,47 @@ def display_metric(
     )
 
 
-def display_business_metrics(
-    revenue="₹12.35M",
-    orders="50",
-    aov="₹246.9K",
-    profit="₹1.84M"
-):
 
+def display_business_metrics(
+    revenue,
+    orders,
+    aov,
+    profit
+):
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-
-        display_metric(
-            "Total Revenue",
-            revenue,
-            "↑ Strong revenue performance",
-            "₹"
-        )
+        display_metric("Total Revenue", revenue, icon="₹")
 
     with col2:
-
-        display_metric(
-            "Total Orders",
-            orders,
-            "↑ Healthy order volume",
-            "□"
-        )
+        display_metric("Total Orders", orders, icon="□")
 
     with col3:
-
-        display_metric(
-            "Average Order",
-            aov,
-            "Per completed order",
-            "↗"
-        )
+        display_metric("Average Order", aov, icon="↗")
 
     with col4:
-
-        display_metric(
-            "Total Profit",
-            profit,
-            "↑ Positive profitability",
-            "◆"
-        )
+        display_metric("Total Profit", profit, icon="◆")
 
 
 def display_inventory_metrics(
-    products="20",
-    low_stock="0",
-    at_risk="2",
-    inventory_value="₹8.42M"
+    products,
+    low_stock,
+    at_risk,
+    inventory_value
 ):
-
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-
-        display_metric(
-            "Products",
-            products,
-            "Active inventory",
-            "▦"
-        )
+        display_metric("Products", products, icon="▦")
 
     with col2:
-
-        display_metric(
-            "Low Stock",
-            low_stock,
-            "Needs monitoring",
-            "!"
-        )
+        display_metric("Low Stock", low_stock, icon="!")
 
     with col3:
-
-        display_metric(
-            "Inventory Risk",
-            at_risk,
-            "Products requiring attention",
-            "⚠"
-        )
+        display_metric("Inventory Risk", at_risk, icon="⚠")
 
     with col4:
-
-        display_metric(
-            "Inventory Value",
-            inventory_value,
-            "Estimated stock value",
-            "₹"
-        )
+        display_metric("Inventory Value", inventory_value, icon="₹")
 
 
 def display_metric_row(metrics):

@@ -33,14 +33,23 @@ def send_question(question):
             )
 
         if not isinstance(result, dict) or "error" in result:
+            error_details = result
+
+            if isinstance(result, dict):
+                error_details = result.get(
+                    "details",
+                    result.get("error", "Unknown backend error"),
+                )
+
+            st.session_state.ai_agent_error = error_details
+
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": (
-                    "I couldn't get a response from the AI backend. "
-                    "Please check that the Flask server is running."
+                    "I couldn't retrieve an answer. "
+                    "Please check the backend error details above."
                 ),
             })
-            st.session_state.ai_agent_error = result
             return
 
         answer = result.get(
