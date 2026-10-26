@@ -530,6 +530,7 @@ def render_inventory():
         column_config=column_config,
     )
 
+
     # --------------------------------------------------------
     # REORDER RECOMMENDATIONS
     # --------------------------------------------------------
@@ -537,17 +538,27 @@ def render_inventory():
     st.markdown("## Reorder recommendations")
 
     reorder = df[
-        df["Status"].isin(
-            ["Reorder", "Out of stock"]
-        )
-    ]
+        df["Status"].isin(["Reorder", "Out of stock"])
+    ].copy()
 
-    if reorder.empty:
-        st.success(
-            "No products currently require replenishment."
-        )
+    # Sort by lowest current stock first.
+    reorder = reorder.sort_values(
+        by=["Stock", "Reorder Level"],
+        ascending=[True, False],
+    )
+
+    # Keep ONLY the first three products.
+    top_recommendations = reorder.head(5).copy()
+
+    st.caption(
+        f"Showing {len(top_recommendations)} of "
+        f"{len(reorder)} products requiring replenishment."
+    )
+
+    if top_recommendations.empty:
+        st.success("No products currently require replenishment.")
     else:
-        for _, row in reorder.iterrows():
+        for _, row in top_recommendations.iterrows():
             suggested = max(
                 int(row["Reorder Level"] * 2 - row["Stock"]),
                 int(row["Reorder Level"]),
@@ -557,14 +568,10 @@ def render_inventory():
                 col1, col2, col3 = st.columns([3, 1, 1])
 
                 with col1:
-                    st.markdown(
-                        f"**{row['Product']}**"
-                    )
-
+                    st.markdown(f"**{row['Product']}**")
                     st.caption(
                         f"Product ID: {row['Product ID']} · "
-                        f"{row['Category']} · "
-                        f"{row['Status']}"
+                        f"{row['Category']} · {row['Status']}"
                     )
 
                 with col2:
@@ -578,11 +585,6 @@ def render_inventory():
                         "Suggested top-up",
                         f"{suggested} units",
                     )
-
-    st.caption(
-        "Inventory records and product prices are retrieved from the Flask API."
-    )
-
 
     # --------------------------------------------------------
     # STOCK MANAGEMENT

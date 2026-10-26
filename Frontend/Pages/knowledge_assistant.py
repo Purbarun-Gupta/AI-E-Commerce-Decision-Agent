@@ -66,6 +66,14 @@ def _ask_rag(question):
 
 
 def _answer_from_result(result):
+    """Safely extract the answer from the Flask agent response."""
+
+    if isinstance(result, str):
+        return result.strip() or None
+
+    if not isinstance(result, dict):
+        return None
+
     for key in ("answer", "response", "reply", "message", "output", "result"):
         value = result.get(key)
 
@@ -75,6 +83,7 @@ def _answer_from_result(result):
         if isinstance(value, dict):
             for nested_key in ("answer", "response", "text", "content"):
                 nested = value.get(nested_key)
+
                 if isinstance(nested, str) and nested.strip():
                     return nested.strip()
 
@@ -82,37 +91,141 @@ def _answer_from_result(result):
 
     if isinstance(knowledge, dict):
         value = knowledge.get("answer") or knowledge.get("response")
+
         if isinstance(value, str) and value.strip():
             return value.strip()
+
+    elif isinstance(knowledge, str) and knowledge.strip():
+        return knowledge.strip()
 
     return None
 
 
 
+def _render_formatted_answer(answer):
+    """Render structured RAG answers with clear visual hierarchy."""
+    import re
+
+    if not answer:
+        st.info("No answer was returned.")
+        return
+
+    section_pattern = re.compile(
+        r"(?i)\b(KEY FINDING|EVIDENCE|RECOMMENDED ACTION|REASON)\s*:"
+    )
+
+    matches = list(section_pattern.finditer(answer))
+
+    # Keep ordinary responses readable if no known headings are present.
+    if not matches:
+        st.markdown(answer)
+        return
+
+    intro = answer[:matches[0].start()].strip()
+    if intro:
+        st.markdown(intro)
+
+    sections = {}
+
+    for index, match in enumerate(matches):
+        start = match.end()
+        end = (
+            matches[index + 1].start()
+            if index + 1 < len(matches)
+            else len(answer)
+        )
+
+        label = match.group(1).upper()
+        content = answer[start:end].strip()
+
+        if content:
+            sections.setdefault(label, []).append(content)
+
+    if sections.get("KEY FINDING"):
+        st.markdown("#### 🎯 Key finding")
+        for content in sections["KEY FINDING"]:
+            st.markdown(content)
+
+    if sections.get("EVIDENCE"):
+        st.markdown("#### 📌 Supporting evidence")
+
+        for content in sections["EVIDENCE"]:
+            # Preserve bullets and numbered lists already in the answer.
+            lines = [
+                line.strip()
+                for line in content.splitlines()
+                if line.strip()
+            ]
+
+            if len(lines) > 1:
+                for line in lines:
+                    st.markdown(line)
+            else:
+                st.markdown(content)
+
+    if sections.get("RECOMMENDED ACTION"):
+        st.markdown("#### 💡 Recommended action")
+
+        for content in sections["RECOMMENDED ACTION"]:
+            with st.container(border=True):
+                st.markdown(content)
+
+    if sections.get("REASON"):
+        st.markdown("#### 📝 Why this matters")
+        for content in sections["REASON"]:
+            st.markdown(content)
+
+
+def _render_explore_further():
+    """Show suggested follow-up questions below the answer."""
+    st.markdown("#### 🔎 Explore Further")
+
+    suggestions = [
+        "What exceptions apply to this policy?",
+        "How can we improve checkout communication?",
+    ]
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.button(
+            suggestions[0],
+            key="explore_policy_exceptions",
+            use_container_width=True,
+            on_click=set_knowledge_query,
+            args=(suggestions[0],),
+        )
+
+    with col2:
+        st.button(
+            suggestions[1],
+            key="explore_checkout_communication",
+            use_container_width=True,
+            on_click=set_knowledge_query,
+            args=(suggestions[1],),
+        )
+
 def _sources_from_result(result):
-    """Extract source documents from the actual agent response."""
+    """Safely extract RAG source documents."""
 
     if not isinstance(result, dict):
         return []
 
-    knowledge = result.get("knowledge", {})
+    knowledge = result.get("knowledge")
 
     if isinstance(knowledge, dict):
-        sources = knowledge.get("sources", [])
+        sources = knowledge.get("sources")
+
         if isinstance(sources, list):
             return sources
 
-    sources = result.get("sources", [])
-    if isinstance(sources, list):
-        return sources
+    for key in ("sources", "documents"):
+        sources = result.get(key)
 
-    documents = result.get("documents", [])
-    if isinstance(documents, list):
-        return documents
+        if isinstance(sources, list):
+            return sources
 
     return []
-
-
 
 
 def _source_record(source):
@@ -183,6 +296,29 @@ def render_knowledge_assistant():
             f"<style>{CSS_PATH.read_text(encoding='utf-8')}</style>",
             unsafe_allow_html=True,
         )
+    
+    # INCREASE KNOWLEDGE ASSISTANT TEXT SIZE
+    st.markdown(
+        """
+        <style>
+        /* Improve readability of answer text */
+        .stMarkdown p {
+            font-size: 19px;
+            line-height: 1.8;
+        }
+
+        .stMarkdown li {
+            font-size: 19px;
+            line-height: 1.8;
+        }
+
+        .stMarkdown h4 {
+            font-size: 25px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # SESSION STATE
     if "knowledge_source_records" not in st.session_state:
@@ -343,68 +479,81 @@ def render_knowledge_assistant():
                 columns=["Document", "Category", "Type", "Status"],
             )
 
+    
     # DISPLAY SEARCH RESPONSE
     result = st.session_state.knowledge_search_result
     error = st.session_state.knowledge_search_error
 
     if error:
         st.markdown("### Search response")
-
-        with st.container(border=True):
-            st.error(error)
+        st.error(error)
 
     elif result:
         answer = _answer_from_result(result)
 
         st.markdown("### Search response")
 
-        with st.container(border=True):
-            if answer:
-                st.markdown(answer)
-            else:
-                st.warning(
-                    "The agent returned a response, but no answer field "
-                    "was found. Check the JSON returned by ask_agent() "
-                    "in ai/agent.py."
-                )
+        if answer:
+            _render_formatted_answer(answer)
+            _render_explore_further()
+        else:
+            st.warning(
+                "The agent returned a response, but no answer field "
+                "was found. Check the JSON returned by ask_agent() "
+                "in ai/agent.py."
+            )
 
-            route = result.get("route")
+        route = result.get("route")
 
-            if route:
-                st.caption(f"Route: {route}")
+        if route:
+            st.caption(f"Response route: {route}")
 
-            sources = _sources_from_result(result)
+        sources = _sources_from_result(result)
 
-            if sources:
-                st.markdown("**Sources**")
+        if sources:
+            st.markdown("#### Sources")
 
-                for index, source in enumerate(sources, start=1):
-                    if isinstance(source, str):
-                        st.write(f"{index}. {source}")
+            unique_sources = []
+            seen_sources = set()
 
-                    elif isinstance(source, dict):
-                        name = (
-                            source.get("source")
-                            or source.get("document")
-                            or source.get("filename")
-                            or source.get("file_name")
-                            or source.get("title")
-                            or f"Source {index}"
-                        )
+            for source in sources:
+                if isinstance(source, str):
+                    name = source
+                    page = None
 
-                        page = (
-                            source.get("page")
-                            or source.get("page_number")
-                            or source.get("page_num")
-                        )
+                elif isinstance(source, dict):
+                    name = (
+                        source.get("source")
+                        or source.get("document")
+                        or source.get("filename")
+                        or source.get("file_name")
+                        or source.get("title")
+                        or "Unknown source"
+                    )
 
-                        st.write(
-                            f"{index}. {name}"
-                            + (
-                                f" — page {page}"
-                                if page is not None else ""
-                            )
-                        )
+                    page = (
+                        source.get("page")
+                        or source.get("page_number")
+                        or source.get("page_num")
+                    )
+                else:
+                    continue
+
+                key = (str(name).strip(), str(page))
+
+                if key not in seen_sources:
+                    seen_sources.add(key)
+                    unique_sources.append((name, page))
+
+            for index, (name, page) in enumerate(
+                unique_sources, start=1
+            ):
+                label = f"{index}. {name}"
+
+                if page is not None:
+                    label += f" — page {page}"
+
+                st.markdown(f"- {label}")
 
     # DOCUMENT LIBRARY
     st.markdown("## Document library")

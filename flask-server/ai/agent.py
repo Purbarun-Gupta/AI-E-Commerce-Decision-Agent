@@ -325,14 +325,34 @@ def route_question(question):
 import time
 
 
+
+
 def get_knowledge(question):
-    result = ask_rag(question, k=4)
+    try:
+        result = ask_rag(question, k=4)
 
-    return {
-        "answer": result["answer"],
-        "sources": result["sources"]
-    }
+        if not isinstance(result, dict):
+            raise TypeError(
+                f"ask_rag returned {type(result).__name__}, expected dict"
+            )
 
+        answer = result.get("answer", "")
+        sources = result.get("sources", [])
+
+        if not isinstance(answer, str):
+            answer = str(answer) if answer is not None else ""
+
+        if not isinstance(sources, list):
+            sources = []
+
+        return {
+            "answer": answer.strip(),
+            "sources": sources
+        }
+
+    except Exception as e:
+        print(f"[RAG ERROR] {e}", flush=True)
+        raise
 
 def ask_agent(question):
     import time

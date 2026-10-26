@@ -1,8 +1,8 @@
+
 import sys
 from pathlib import Path
 
 FLASK_SERVER_DIR = Path(__file__).resolve().parent.parent / "flask-server"
-
 sys.path.insert(0, str(FLASK_SERVER_DIR))
 
 from rag.retriever import retrieve_documents
@@ -10,20 +10,28 @@ from ai.gemini import generate_response
 
 
 def ask_rag(question, k=4):
+    """Retrieve relevant documents and return a consistent response."""
 
     # 1. Retrieve relevant documents
     documents = retrieve_documents(question, k=k)
 
     if not documents:
-        return "I could not find relevant information in the knowledge base."
+        return {
+            "question": question,
+            "answer": "I could not find relevant information in the knowledge base.",
+            "sources": []
+        }
 
-    # 2. Build context
+    # 2. Build context and collect source metadata
     context_parts = []
+    sources = []
 
     for doc in documents:
+        metadata = getattr(doc, "metadata", {}) or {}
 
-        source = doc.metadata.get("source", "Unknown source")
-        page = doc.metadata.get("page", "Unknown page")
+        source = metadata.get("source", "Unknown source")
+        page = metadata.get("page", "Unknown page")
+        content = getattr(doc, "page_content", "")
 
         context_parts.append(
             f"""
@@ -31,13 +39,18 @@ SOURCE: {source}
 PAGE: {page}
 
 CONTENT:
-{doc.page_content}
+{content}
 """
         )
 
+        sources.append({
+            "source": source,
+            "page": page
+        })
+
     context = "\n\n".join(context_parts)
 
-    # 3. Send retrieved context to Gemini
+    # 3. Generate an answer using the retrieved context
     prompt = f"""
 You are an e-commerce business assistant.
 
@@ -61,21 +74,15 @@ Provide a clear and concise answer.
 
     answer = generate_response(prompt)
 
+    # 4. Always return the same response structure
     return {
         "question": question,
         "answer": answer,
-        "sources": [
-            {
-                "source": doc.metadata.get("source"),
-                "page": doc.metadata.get("page")
-            }
-            for doc in documents
-        ]
+        "sources": sources
     }
 
 
 if __name__ == "__main__":
-
     question = "Can I cancel my order after it has been dispatched?"
 
     result = ask_rag(question)
