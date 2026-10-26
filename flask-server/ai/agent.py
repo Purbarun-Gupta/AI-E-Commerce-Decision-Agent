@@ -321,58 +321,9 @@ def route_question(question):
 
     return "DATABASE"
 
-def ask_agent(question):
 
-    route = route_question(question)
+import time
 
-    business_data = None
-    knowledge = None
-
-    if route in ["DATABASE", "BOTH"]:
-        business_data = get_business_data()
-
-    if route in ["RAG", "BOTH"]:
-        knowledge = get_knowledge(question)
-
-    if business_data is None:
-        business_data = {}
-
-    prompt = build_prompt(
-        question,
-        business_data
-    )
-
-    if knowledge is not None:
-
-        prompt += f"""
-
-========================
-KNOWLEDGE BASE
-========================
-
-KNOWLEDGE BASE ANSWER:
-{knowledge["answer"]}
-
-KNOWLEDGE BASE SOURCES:
-{knowledge["sources"]}
-
-IMPORTANT:
-- Use the knowledge base for documented policies,
-  procedures, and operational guidance.
-- Do not treat knowledge-base information as
-  current business data.
-- Use database data for current business numbers.
-"""
-
-    answer = generate_response(prompt)
-
-    return {
-        "question": question,
-        "route": route,
-        "answer": answer,
-        "business_data": business_data,
-        "knowledge": knowledge
-    }
 
 def get_knowledge(question):
     result = ask_rag(question, k=4)
@@ -380,4 +331,75 @@ def get_knowledge(question):
     return {
         "answer": result["answer"],
         "sources": result["sources"]
+    }
+
+
+def ask_agent(question):
+    import time
+
+    total_start = time.perf_counter()
+
+    route = route_question(question)
+    business_data = None
+    knowledge = None
+
+    if route in ["DATABASE", "BOTH"]:
+        start = time.perf_counter()
+        business_data = get_business_data()
+        print(
+            f"[TIMING] get_business_data: "
+            f"{time.perf_counter() - start:.2f}s",
+            flush=True,
+        )
+
+    if route in ["RAG", "BOTH"]:
+        start = time.perf_counter()
+        knowledge = get_knowledge(question)
+        print(
+            f"[TIMING] get_knowledge: "
+            f"{time.perf_counter() - start:.2f}s",
+            flush=True,
+        )
+
+    if business_data is None:
+        business_data = {}
+
+    start = time.perf_counter()
+    prompt = build_prompt(question, business_data)
+
+    if knowledge is not None:
+        prompt += f"""
+KNOWLEDGE BASE ANSWER:
+{knowledge["answer"]}
+KNOWLEDGE BASE SOURCES:
+{knowledge["sources"]}
+IMPORTANT: use knowledge base for policies and DB for current business numbers.
+"""
+
+    print(
+        f"[TIMING] prompt construction: "
+        f"{time.perf_counter() - start:.2f}s",
+        flush=True,
+    )
+    print(f"[TIMING] prompt characters: {len(prompt)}", flush=True)
+
+    start = time.perf_counter()
+    answer = generate_response(prompt)
+    print(
+        f"[TIMING] generate_response: "
+        f"{time.perf_counter() - start:.2f}s",
+        flush=True,
+    )
+
+    print(
+        f"[TIMING] TOTAL: {time.perf_counter() - total_start:.2f}s",
+        flush=True,
+    )
+
+    return {
+        "question": question,
+        "route": route,
+        "answer": answer,
+        "business_data": business_data,
+        "knowledge": knowledge,
     }
