@@ -3,12 +3,158 @@ import streamlit as st
 from api import api_post
 
 
+def _extract_answer(result):
+    """Find an answer in common Flask response structures."""
+
+    if isinstance(result, str):
+        return result.strip() or None
+
+    if not isinstance(result, dict):
+        return None
+
+    # Check direct answer fields first.
+    answer_keys = (
+        "answer",
+        "response",
+        "reply",
+        "output",
+        "text",
+        "content",
+    )
+
+    for key in answer_keys:
+        value = result.get(key)
+
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+        if isinstance(value, dict):
+            nested = _extract_answer(value)
+            if nested:
+                return nested
+
+    # Check common nested response containers.
+    for key in ("data", "result", "knowledge"):
+        value = result.get(key)
+
+        if isinstance(value, dict):
+            nested = _extract_answer(value)
+            if nested:
+                return nested
+
+        elif isinstance(value, str) and value.strip():
+            return value.strip()
+
+    return None
+
+
+def _extract_sources(result):
+    """Extract source documents from common response structures."""
+
+    if not isinstance(result, dict):
+        return []
+
+    knowledge = result.get("knowledge")
+
+    if isinstance(knowledge, dict):
+        sources = knowledge.get("sources")
+        if isinstance(sources, list):
+            return sources
+
+    sources = result.get("sources", result.get("documents"))
+
+    if isinstance(sources, list):
+        return sources
+
+    for key in ("data", "result"):
+        nested = result.get(key)
+
+        if isinstance(nested, dict):
+            sources = _extract_sources(nested)
+            if sources:
+                return sources
+
+    return []
+
+
+def _format_sources(sources):
+    """Create a readable, de-duplicated source list."""
+
+    lines = []
+    seen = set()
+
+    for source in sources:
+        if isinstance(source, str):
+            name, page = source, None
+
+        elif isinstance(source, dict):
+            name = (
+                source.get("source")
+                or source.get("document")
+                or source.get("filename")
+                or source.get("file_name")
+                or source.get("title")
+                or "Unknown document"
+            )
+
+            page = (
+                source.get("page")
+                or source.get("page_number")
+                or source.get("page_num")
+            )
+
+        else:
+            continue
+
+        key = (str(name).strip(), str(page))
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        label = str(name).strip()
+
+        if page is not None:
+            label += f" — page {page}"
+
+        lines.append(f"- {label}")
+
+    return lines
+
+
+def _backend_error(result):
+    """Return a useful error when the API reports a failure."""
+
+    if not isinstance(result, dict):
+        return None
+
+    if result.get("error"):
+        return str(
+            result.get("details")
+            or result.get("error")
+        )
+
+    if result.get("success") is False:
+        return str(
+            result.get("details")
+            or result.get("message")
+            or "The backend reported that the request failed."
+        )
+
+    return None
+
+
 def send_question(question):
-    """Send a question to the Flask AI agent and save the response."""
+    """Send a question to Flask and save the conversation."""
+
     question = (question or "").strip()
 
     if not question:
         return
+
+    # Clear the previous diagnostic message.
+    st.session_state.ai_agent_error = None
 
     # Save the user's message.
     st.session_state.messages.append({
@@ -16,7 +162,7 @@ def send_question(question):
         "content": question,
     })
 
-    # Save the question in recent history.
+    # Keep recent questions for the sidebar.
     recent = st.session_state.recent_questions
 
     if question not in recent:
@@ -24,82 +170,92 @@ def send_question(question):
 
     st.session_state.recent_questions = recent[-20:]
 
-    # Call the existing Flask backend.
     try:
-        with st.spinner("Analyzing your business data..."):
+        with st.spinner("CommerceAI is thinking..."):
             result = api_post(
                 "/api/agent/ask",
                 {"question": question},
             )
 
-        if not isinstance(result, dict) or "error" in result:
-            error_details = result
+        # Handle explicit backend errors.
+        error = _backend_error(result)
 
-            if isinstance(result, dict):
-                error_details = result.get(
-                    "details",
-                    result.get("error", "Unknown backend error"),
-                )
-
-            st.session_state.ai_agent_error = error_details
+        if error:
+            st.session_state.ai_agent_error = error
 
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": (
-                    "I couldn't retrieve an answer. "
-                    "Please check the backend error details above."
+                    "I'm having trouble retrieving that information "
+                    "right now. Please check the backend details below "
+                    "and try again."
                 ),
             })
             return
 
-        answer = result.get(
-            "answer",
-            "The backend returned no answer.",
-        )
+        if not isinstance(result, (dict, str)):
+            st.session_state.ai_agent_error = (
+                "Unexpected API response type: "
+                f"{type(result).__name__}"
+            )
 
-        # Show the route selected by the backend, if available.
-        route = result.get("route")
-        if route:
-            answer = f"**Route: {route}**\n\n{answer}"
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": (
+                    "I received an unexpected response from the "
+                    "business intelligence service."
+                ),
+            })
+            return
 
-        # Include RAG sources when the backend returns them.
-        knowledge = result.get("knowledge")
+        answer = _extract_answer(result)
 
-        if isinstance(knowledge, dict):
-            sources = knowledge.get("sources", [])
+        if not answer:
+            keys = (
+                ", ".join(result.keys())
+                if isinstance(result, dict)
+                else "plain string response"
+            )
 
-            if sources:
-                answer += "\n\n**Sources:**\n"
+            st.session_state.ai_agent_error = (
+                "The API response did not contain a recognizable "
+                f"answer. Response fields: {keys}"
+            )
 
-                for source in sources:
-                    if isinstance(source, dict):
-                        name = source.get(
-                            "source",
-                            "Unknown document",
-                        )
-                        page = source.get("page", "Unknown")
-                        answer += f"\n- {name} — page {page}"
+            answer = (
+                "I couldn't find an answer in the service response. "
+                "Please check the backend response format."
+            )
+
+        # Add source references to the same assistant message.
+        sources = _format_sources(_extract_sources(result))
+
+        if sources:
+            answer += "\n\n**Sources**\n\n" + "\n".join(sources)
 
         st.session_state.messages.append({
             "role": "assistant",
-            "content": str(answer),
+            "content": answer,
         })
 
     except Exception as exc:
+        st.session_state.ai_agent_error = (
+            f"{type(exc).__name__}: {exc}"
+        )
+
         st.session_state.messages.append({
             "role": "assistant",
             "content": (
-                "The request to the AI backend failed. "
-                "Check your Flask server and API configuration."
+                "I couldn't connect to the business intelligence "
+                "service. Please check the Flask server and API "
+                "configuration."
             ),
         })
-        st.session_state.ai_agent_error = str(exc)
 
 
 def render_ai_agent():
-    """Render the AI Agent page."""
+    """Render the CommerceAI conversational interface."""
 
-    # Initialize shared state without overwriting existing conversations.
     defaults = {
         "messages": [],
         "recent_questions": [],
@@ -111,7 +267,7 @@ def render_ai_agent():
         if key not in st.session_state:
             st.session_state[key] = value
 
-    # Handle a question selected from the shared sidebar.
+    # Process questions selected from the shared sidebar.
     pending = st.session_state.pending_question
 
     if pending:
@@ -119,44 +275,39 @@ def render_ai_agent():
         send_question(pending)
         st.rerun()
 
+    # Header.
     st.markdown(
         """
         <div class="chat-page-header">
-            <div>
-                <div class="page-kicker">COMMERCEAI WORKSPACE</div>
-                <h1>AI Business Agent</h1>
-                <p>
-                    Ask about sales, profitability, inventory,
-                    or company policies.
-                </p>
-            </div>
-            <div class="demo-pill">AI Agent</div>
+            <div class="page-kicker">COMMERCEAI WORKSPACE</div>
+            <h1>AI Business Agent</h1>
+            <p>
+                Your business assistant for sales, profitability,
+                inventory, and company policies.
+            </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Display any backend error details for debugging.
-    error = st.session_state.ai_agent_error
+    # Show backend diagnostics when an error occurs.
+    if st.session_state.ai_agent_error:
+        with st.expander("Backend error details", expanded=True):
+            st.code(str(st.session_state.ai_agent_error))
 
-    if error:
-        with st.expander("Backend error details"):
-            st.write(error)
-
-        st.session_state.ai_agent_error = None
-
-    # Empty conversation: show welcome screen and suggestions.
+    # Welcome screen for an empty conversation.
     if not st.session_state.messages:
         st.markdown(
             """
             <div class="chat-welcome">
                 <div class="chat-welcome-icon">✦</div>
-                <h2>What would you like to know?</h2>
+                <h2>How can I help you today?</h2>
                 <p>
-                    Ask a business question or start with
-                    one of these suggestions.
+                    Ask a question about your business or select
+                    a suggestion to get started.
                 </p>
             </div>
+            <div class="suggestions-label">SUGGESTED QUESTIONS</div>
             """,
             unsafe_allow_html=True,
         )
@@ -168,26 +319,34 @@ def render_ai_agent():
             "How can we improve profitability?",
         ]
 
-        left, right = st.columns(2, gap="small")
+        left, right = st.columns(2, gap="medium")
 
-        for i, suggestion in enumerate(suggestions):
-            target = left if i % 2 == 0 else right
+        for index, suggestion in enumerate(suggestions):
+            target = left if index % 2 == 0 else right
 
             with target:
                 if st.button(
                     suggestion,
-                    key=f"ai_suggestion_{i}",
-                    use_container_width=True,
+                    key=f"ai_suggestion_{index}",
+                    width="stretch",
                 ):
                     send_question(suggestion)
                     st.rerun()
 
-    # Display conversation history.
+    # Render conversation exactly once.
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+        role = message.get("role", "assistant")
+        content = message.get("content", "")
 
-    # Chat input.
+        if role not in ("user", "assistant"):
+            role = "assistant"
+
+        avatar = "✦" if role == "assistant" else "🧑"
+
+        with st.chat_message(role, avatar=avatar):
+            st.markdown(content)
+
+    # One chat input, at the bottom of the page.
     question = st.chat_input(
         "Message CommerceAI...",
         key="ai_chat_input",
