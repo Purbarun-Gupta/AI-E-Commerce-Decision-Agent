@@ -451,7 +451,6 @@ textarea,
     line-height: 1.5;
 }
 
-
 /* ================= AI AGENT CHAT ================= */
 
 .chat-page-header {
@@ -523,54 +522,62 @@ textarea,
     color: white;
 }
 
-/* Chat message layout */
+/* Chat message base layout */
 [data-testid="stChatMessage"] {
     display: flex !important;
     width: 100% !important;
-    gap: 10px;
-    margin: 8px 0 16px !important;
+    gap: 12px;
+    margin: 16px 0 !important;
     padding: 0 !important;
     border: 0 !important;
     background: transparent !important;
 }
 
-/* Bubble styling */
-[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] {
-    max-width: min(82%, 850px) !important;
-    padding: 13px 18px !important;
-    border: 1px solid #29384c;
-    border-radius: 5px 18px 18px 18px;
-    background: #131e2c;
-    overflow-wrap: anywhere;
-}
-
-/* AI left */
-[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
+/* AI Assistant Message -> Left Side (No Box/Card) */
+[data-testid="stChatMessage"]:nth-child(odd) {
     flex-direction: row !important;
     justify-content: flex-start !important;
 }
+[data-testid="stChatMessage"]:nth-child(odd) [data-testid="stMarkdownContainer"] {
+    max-width: min(85%, 900px) !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    text-align: left;
+}
 
-/* User right */
-[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
+/* User Question -> Right Side (No Box/Card) */
+[data-testid="stChatMessage"]:nth-child(even) {
     flex-direction: row-reverse !important;
     justify-content: flex-start !important;
 }
-[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"])
-[data-testid="stMarkdownContainer"] {
-    border-color: #315b8b;
-    border-radius: 18px 5px 18px 18px;
-    background: #204a75;
+[data-testid="stChatMessage"]:nth-child(even) [data-testid="stMarkdownContainer"] {
+    max-width: min(85%, 900px) !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    text-align: right;
 }
 
-/* Chat text */
+/* Typography for conversational text, headings, and pointers */
 [data-testid="stChatMessage"] p,
 [data-testid="stChatMessage"] li {
     color: #e5edf7;
     font-size: 16px !important;
     line-height: 1.75 !important;
 }
+[data-testid="stChatMessage"] h3,
+[data-testid="stChatMessage"] h4 {
+    color: #60a5fa;
+    margin-top: 12px;
+    margin-bottom: 6px;
+}
 [data-testid="stChatMessage"] strong {
     color: white;
+}
+[data-testid="stChatMessage"] ul {
+    padding-left: 20px;
+    margin-top: 6px;
 }
 
 /* Chat input */
@@ -601,15 +608,13 @@ textarea,
     .chat-welcome { padding: 24px 14px; }
     .chat-welcome h2 { font-size: 22px; }
     [data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] {
-        max-width: 90% !important;
-        padding: 11px 13px !important;
+        max-width: 95% !important;
     }
     [data-testid="stChatMessage"] p,
     [data-testid="stChatMessage"] li {
         font-size: 15px !important;
     }
 }
-
 
 /* ======================================================
    DATAFRAMES AND TABLES

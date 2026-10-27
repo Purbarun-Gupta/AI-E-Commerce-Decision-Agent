@@ -341,9 +341,7 @@ def render_ai_agent():
         if role not in ("user", "assistant"):
             role = "assistant"
 
-        avatar = "✦" if role == "assistant" else "🧑"
-
-        with st.chat_message(role, avatar=avatar):
+        with st.chat_message(role):
             st.markdown(content)
 
     # One chat input, at the bottom of the page.
