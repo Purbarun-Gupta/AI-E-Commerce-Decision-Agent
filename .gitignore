@@ -10,11 +10,11 @@ env/
 .env.*
 !.env.example
 
-*.db
-*.sqlite
-*.sqlite3
-chroma_langchain_db/
-chroma_db/
+# *.db
+# *.sqlite
+# *.sqlite3
+# chroma_langchain_db/
+# chroma_db/
 .pytest_cache/
 .coverage
 htmlcov/
