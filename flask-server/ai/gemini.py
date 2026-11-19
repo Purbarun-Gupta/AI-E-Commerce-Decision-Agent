@@ -26,6 +26,7 @@ GEMINI_MODELS = [
 
 
 
+
 def generate_response(prompt):
 
     last_error = None
@@ -47,35 +48,29 @@ def generate_response(prompt):
                     model=model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
-                        max_output_tokens=800,
+                        max_output_tokens=500,
                         temperature=0.2,
                     ),
                 )
 
-                elapsed = time.perf_counter() - start_time
+                if not response.text:
+                    raise RuntimeError("Empty Gemini response")
 
                 print(
-                    f"[Gemini] {model} succeeded in "
-                    f"{elapsed:.2f}s",
+                    f"[Gemini] Success: "
+                    f"{time.perf_counter() - start_time:.2f}s",
                     flush=True
                 )
-
-                if not response.text:
-                    raise RuntimeError(
-                        f"{model} returned an empty response."
-                    )
 
                 return response.text
 
             except Exception as e:
 
                 last_error = e
-                elapsed = time.perf_counter() - start_time
                 error_text = str(e).upper()
 
                 print(
-                    f"[Gemini] {model} failed after "
-                    f"{elapsed:.2f}s: {e}",
+                    f"[Gemini] Failed: {e}",
                     flush=True
                 )
 
@@ -84,27 +79,33 @@ def generate_response(prompt):
                     for code in [
                         "503",
                         "UNAVAILABLE",
+                        "504",
+                        "DEADLINE_EXCEEDED",
                         "429",
                         "RESOURCE_EXHAUSTED",
                         "500",
                         "502",
-                        "504",
                         "TIMEOUT",
-                        "TIMED OUT",
                     ]
                 )
 
                 if transient:
                     if attempt == 0:
-                        time.sleep(2)
+                        wait_time = 2 ** attempt
+                        print(
+                            f"[Gemini] Retrying in {wait_time}s",
+                            flush=True
+                        )
+                        time.sleep(wait_time)
                         continue
 
                     break
 
                 raise RuntimeError(
-                    f"Gemini request failed: {e}"
+                    f"Gemini error with {model}: {e}"
                 ) from e
 
     raise RuntimeError(
-        f"All Gemini models failed. Last error: {last_error}"
+        f"All configured Gemini models failed. "
+        f"Last error: {last_error}"
     )
