@@ -25,71 +25,86 @@ GEMINI_MODELS = [
 ]
 
 
+
 def generate_response(prompt):
+
     last_error = None
 
     for model in GEMINI_MODELS:
-        start_time = time.perf_counter()
 
-        try:
-            print(f"[Gemini] Trying model: {model}", flush=True)
+        for attempt in range(2):
 
-            response = client.models.generate_content(
-                model=model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    max_output_tokens=800,
-                    temperature=0.2,
-                ),
-            )
+            start_time = time.perf_counter()
 
-            elapsed = time.perf_counter() - start_time
-            print(
-                f"[Gemini] {model} succeeded in {elapsed:.2f}s",
-                flush=True,
-            )
+            try:
+                print(
+                    f"[Gemini] Trying {model}, "
+                    f"attempt {attempt + 1}",
+                    flush=True
+                )
 
-            if not response.text:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        max_output_tokens=800,
+                        temperature=0.2,
+                    ),
+                )
+
+                elapsed = time.perf_counter() - start_time
+
+                print(
+                    f"[Gemini] {model} succeeded in "
+                    f"{elapsed:.2f}s",
+                    flush=True
+                )
+
+                if not response.text:
+                    raise RuntimeError(
+                        f"{model} returned an empty response."
+                    )
+
+                return response.text
+
+            except Exception as e:
+
+                last_error = e
+                elapsed = time.perf_counter() - start_time
+                error_text = str(e).upper()
+
+                print(
+                    f"[Gemini] {model} failed after "
+                    f"{elapsed:.2f}s: {e}",
+                    flush=True
+                )
+
+                transient = any(
+                    code in error_text
+                    for code in [
+                        "503",
+                        "UNAVAILABLE",
+                        "429",
+                        "RESOURCE_EXHAUSTED",
+                        "500",
+                        "502",
+                        "504",
+                        "TIMEOUT",
+                        "TIMED OUT",
+                    ]
+                )
+
+                if transient:
+                    if attempt == 0:
+                        time.sleep(2)
+                        continue
+
+                    break
+
                 raise RuntimeError(
-                    f"{model} returned an empty text response."
-                )
-
-            return response.text
-
-        except Exception as e:
-            last_error = e
-            elapsed = time.perf_counter() - start_time
-
-            print(
-                f"[Gemini] {model} failed after {elapsed:.2f}s: "
-                f"{type(e).__name__}: {e}",
-                flush=True,
-            )
-
-            # Retry another model only for potentially temporary errors.
-            error_text = str(e).upper()
-            transient = any(
-                marker in error_text
-                for marker in (
-                    "503",
-                    "UNAVAILABLE",
-                    "429",
-                    "RESOURCE_EXHAUSTED",
-                    "500",
-                    "502",
-                    "504",
-                    "TIMEOUT",
-                    "TIMED OUT",
-                )
-            )
-
-            if transient:
-                continue
-
-            raise RuntimeError(
-                f"Gemini request failed with {model}: {e}"
-            ) from e
+                    f"Gemini request failed: {e}"
+                ) from e
 
     raise RuntimeError(
-        f"All configured Gemini models failed. Last error: {last_error}"
+        f"All Gemini models failed. Last error: {last_error}"
     )
